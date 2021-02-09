@@ -3,10 +3,10 @@ pragma experimental ABIEncoderV2;
 
 struct VestingWallet {
     address wallet;
-    uint totalAmount;
-    uint dayAmount;
-    uint startDay;
-    uint afterDays;
+    uint256 totalAmount;
+    uint256 dayAmount;
+    uint256 startDay;
+    uint256 afterDays;
     bool vesting;
 }
 
@@ -17,8 +17,8 @@ struct VestingWallet {
 **/
 
 struct VestingType {
-    uint dailyRate;
-    uint afterDays;
+    uint256 dailyRate;
+    uint256 afterDays;
     bool vesting;
 }
 
@@ -76,18 +76,18 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
         return 100000000;
     }
 
-    function mulDiv(uint x, uint y, uint z) private pure returns (uint) {
+    function mulDiv(uint256 x, uint256 y, uint256 z) private pure returns (uint256) {
         return x.mul(y).div(z);
     }
     
-    function addAllocations(address[] memory addresses, uint[] memory totalAmounts, uint vestingTypeIndex) external onlyOwner returns (bool) {
+    function addAllocations(address[] memory addresses, uint256[] memory totalAmounts, uint256 vestingTypeIndex) external onlyOwner returns (bool) {
         require(addresses.length == totalAmounts.length, "Address and totalAmounts length must be same");
         require(vestingTypes[vestingTypeIndex].vesting, "Vesting type isn't found");
 
         VestingType memory vestingType = vestingTypes[vestingTypeIndex];
-        uint addressesLength = addresses.length;
+        uint256 addressesLength = addresses.length;
 
-        for(uint i = 0; i < addressesLength; i++) {
+        for(uint256 i = 0; i < addressesLength; i++) {
             address _address = addresses[i];
             uint256 totalAmount = totalAmounts[i];
             // We add 1 to round up, this prevents small amounts from never vesting
@@ -101,7 +101,7 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
     }
 
     function _mint(address account, uint256 amount) internal override {
-        uint totalSupply = super.totalSupply();
+        uint256 totalSupply = super.totalSupply();
         require(getMaxTotalSupply() >= totalSupply.add(amount), "Maximum supply exceeded!");
         super._mint(account, amount);
     }
@@ -109,15 +109,15 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
     // Utilizes the overwritten _mint function so won't mint past max supply
     // The provided amount is used for all transactions in this batch
     function batchMint(address[] memory addresses, uint256 amount) external onlyOwner returns (bool) {
-        uint addressesLength = addresses.length;
-        for(uint i = 0; i < addressesLength; i++) {
+        uint256 addressesLength = addresses.length;
+        for(uint256 i = 0; i < addressesLength; i++) {
             address _address = addresses[i];
             _mint(_address, amount);
         }
         return true;
     }
     
-    function addVestingWallet(address wallet, uint totalAmount, uint dayAmount, uint afterDays) internal {
+    function addVestingWallet(address wallet, uint256 totalAmount, uint256 dayAmount, uint256 afterDays) internal {
 
         require(!vestingWallets[wallet].vesting, "Vesting wallet already created for this address");
 
@@ -145,21 +145,21 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
      * Returns the amount of days passed with vesting
      */
 
-    function getDays(uint afterDays) public view returns (uint) {
+    function getDays(uint256 afterDays) public view returns (uint256) {
         uint256 releaseTime = getListingTime();
-        uint time = releaseTime.add(afterDays);
+        uint256 time = releaseTime.add(afterDays);
 
         if (block.timestamp < time) {
             return 0;
         }
 
-        uint diff = block.timestamp.sub(time);
-        uint ds = diff.div(1 days).add(1);
+        uint256 diff = block.timestamp.sub(time);
+        uint256 ds = diff.div(1 days).add(1);
         
         return ds;
     }
 
-    function isStarted(uint startDay) public view returns (bool) {
+    function isStarted(uint256 startDay) public view returns (bool) {
         uint256 releaseTime = getListingTime();
 
         if (block.timestamp < releaseTime || block.timestamp < startDay) {
@@ -175,7 +175,7 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
             return balanceOf(sender);
         }
 
-        uint ds = getDays(vestingWallets[sender].afterDays);
+        uint256 ds = getDays(vestingWallets[sender].afterDays);
         uint256 dailyTransferableAmount = vestingWallets[sender].dayAmount.mul(ds);
 
         if (dailyTransferableAmount > vestingWallets[sender].totalAmount) {
