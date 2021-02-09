@@ -42,3 +42,9 @@ npx hardhat run --network rinkeby scripts/deploy.js
 ```bash
 npx hardhat verify --network rinkeby CONTRACT_ADDRESS
 ```
+
+### Remarks
+
+After deploying the contract and allocating the full supply the 
+`renounceOwnership` function will be called so that it will be 
+impossible to mint any burned tokens later on.
