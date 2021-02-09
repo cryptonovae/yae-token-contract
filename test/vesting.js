@@ -3,7 +3,8 @@ const chai = require("chai");
 const { solidity } = require("ethereum-waffle");
 
 /**
- * Make sure the contract start date for testing is set to 01/01/2020 00:00:00
+ * Make sure the contract start date for testing is set to 01/01/2022 00:00:00
+ * You can do this in the getListingTime function
  */
 
 chai.use(solidity);

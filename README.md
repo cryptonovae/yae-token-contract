@@ -44,7 +44,7 @@ npx hardhat run --network rinkeby scripts/deploy.js
 npx hardhat verify --network rinkeby CONTRACT_ADDRESS
 ```
 
-### Remarks
+## Remarks
 
 After deploying the contract and allocating the full supply the 
 `renounceOwnership` function will be called so that it will be 
