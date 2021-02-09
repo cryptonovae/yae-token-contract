@@ -23,12 +23,11 @@ struct VestingType {
 }
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
+contract VestingToken is Ownable, ERC20Burnable {
     mapping (address => VestingWallet) public vestingWallets;
     VestingType[] public vestingTypes;
 
@@ -215,16 +214,8 @@ contract VestingToken is Ownable, ERC20Burnable, ERC20Pausable {
     }
 
     // @override
-    function _beforeTokenTransfer(address sender, address recipient, uint256 amount) internal virtual override(ERC20, ERC20Pausable) {
+    function _beforeTokenTransfer(address sender, address recipient, uint256 amount) internal virtual override(ERC20) {
         require(canTransfer(sender, amount), "Unable to transfer, not unlocked yet.");
         super._beforeTokenTransfer(sender, recipient, amount);
-    }
-
-    function pause(bool status) public onlyOwner {
-        if (status) {
-            _pause();
-        } else {
-            _unpause();
-        }
     }
 }
