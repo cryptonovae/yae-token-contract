@@ -29,7 +29,7 @@ describe("Vesting", function() {
     // This is called before each test to reset the contract
     beforeEach(async function () {
         snapshot = await network.provider.send("evm_snapshot");
-        token = await ethers.getContractFactory("VestingToken");
+        token = await ethers.getContractFactory("YAEToken");
         mc = await token.deploy();
         [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10] = await ethers.getSigners();
         await mc.deployed();
@@ -82,35 +82,6 @@ describe("Vesting", function() {
 
     });
     
-    it("Batch Mint (airdrop?)", async function() {
-        let totalSupply = await mc.totalSupply();
-        expect(totalSupply.toNumber()).to.equal(0);
-        
-        const addrs = [
-            addr1.address, 
-            addr2.address, 
-            addr3.address, 
-            addr4.address,
-            addr5.address,
-            addr6.address,
-            addr7.address,
-            addr8.address,
-            addr9.address,
-            addr10.address
-        ];
-
-        await mc.batchMint(addrs, [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]);
-
-        totalSupply = await mc.totalSupply();
-        expect(totalSupply.toNumber()).to.equal(1000);
-
-        await mc.connect(addr1).transfer(addr2.address, 100);
-
-        expect(await mc.balanceOf(addr1.address)).to.equal(0);
-        expect(await mc.balanceOf(addr2.address)).to.equal(200);
-        expect(await mc.balanceOf(addr3.address)).to.equal(100);
-    });
-
     it("Full supply allocation, no more", async function() {
         let totalSupply = await mc.totalSupply();
     
@@ -124,11 +95,17 @@ describe("Vesting", function() {
         await mc.addAllocations([addr6.address], [1000000], 5);
         await mc.addAllocations([addr7.address], [1000000], 6);
         await mc.addAllocations([addr8.address], [1000000], 7);
+        
+        await expect(
+            mc.addAllocations([addr8.address], [1000000], 3)
+        ).to.be.revertedWith("Vesting wallet already created for this address");
+        
         await mc.addAllocations([addr9.address], [92000000], 7);
 
         await expect(
             mc.addAllocations([addr10.address], [1000000], 7)
         ).to.be.revertedWith("Maximum supply exceeded!");
+        
 
         totalSupply = await mc.totalSupply();
         expect(totalSupply.toNumber()).to.equal(100000000);

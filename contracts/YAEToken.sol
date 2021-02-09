@@ -31,7 +31,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-contract VestingToken is Ownable, ERC20Burnable {
+contract YAEToken is Ownable, ERC20Burnable {
     
     using SafeMath for uint256;
     
@@ -84,6 +84,7 @@ contract VestingToken is Ownable, ERC20Burnable {
         vestingTypes.push(VestingType(1337, 0, true, true));
     }
 	
+    // Vested tokens won't be available before the listing time
     function getListingTime() public pure returns (uint256) {
         return 1640995200; // 2022/1/1 00:00
         //return 1609459200; // 2021/1/1 00:00
@@ -125,18 +126,6 @@ contract VestingToken is Ownable, ERC20Burnable {
         super._mint(account, amount);
     }
 
-    // Utilizes the overwritten _mint function so won't mint past max supply
-    // The provided amount is used for all transactions in this batch
-    function batchMint(address[] memory addresses, uint256[] memory amounts) external onlyOwner returns (bool) {
-        require(addresses.length == amounts.length, "Addresses should equal amounts");
-        uint256 addressesLength = addresses.length;
-        for(uint256 i = 0; i < addressesLength; i++) {
-            address _address = addresses[i];
-            _mint(_address, amounts[i]);
-        }
-        return true;
-    }
-    
     function addVestingWallet(address wallet, uint256 totalAmount, uint256 dayAmount, uint256 afterDays, bool nonlinear) internal {
 
         require(!vestingWallets[wallet].vesting, "Vesting wallet already created for this address");
@@ -212,7 +201,8 @@ contract VestingToken is Ownable, ERC20Burnable {
         unlocked = unlocked.add(_rem.add(1).mul(_days_remainder));
         return unlocked;
     }
-
+    
+    // Returns the amount of tokens unlocked by vesting so far
     function getTransferableAmount(address sender) public view returns (uint256) {
         
         if (!vestingWallets[sender].vesting) {
@@ -232,7 +222,8 @@ contract VestingToken is Ownable, ERC20Burnable {
 
         return dailyTransferableAmount;
     }
-
+    
+    // Returns the amount of vesting tokens still locked
     function getRestAmount(address sender) public view returns (uint256) {
         uint256 transferableAmount = getTransferableAmount(sender);
         uint256 restAmount = vestingWallets[sender].totalAmount.sub(transferableAmount);
@@ -250,20 +241,23 @@ contract VestingToken is Ownable, ERC20Burnable {
 
         uint256 balance = balanceOf(sender);
         uint256 restAmount = getRestAmount(sender);
-
+        
+        // Account for sending received tokens outside of the vesting schedule
         if (balance > vestingWallets[sender].totalAmount && balance.sub(vestingWallets[sender].totalAmount) >= amount) {
             return true;
         }
 
+        // Don't allow vesting if the period has not started yet or if you are below allowance
         if (!isStarted(vestingWallets[sender].startDay) || balance.sub(amount) < restAmount) {
             return false;
         }
 
         return true;
     }
-
+    
     // @override
     function _beforeTokenTransfer(address sender, address recipient, uint256 amount) internal virtual override(ERC20) {
+        // Reject any transfers that are not allowed
         require(canTransfer(sender, amount), "Unable to transfer, not unlocked yet.");
         super._beforeTokenTransfer(sender, recipient, amount);
     }
