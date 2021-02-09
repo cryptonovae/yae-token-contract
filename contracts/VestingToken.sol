@@ -8,18 +8,22 @@ struct VestingWallet {
     uint256 startDay;
     uint256 afterDays;
     bool vesting;
+    bool nonlinear;
 }
 
 /**
  * dailyRate:       the daily amount of tokens to give access to,
  *                  this is a percentage * 1000000000000000000
+ *                  this value is ignored if nonlinear is true
  * afterDays:       vesting cliff, don't allow any withdrawal before these days expired
+ * nonlinear:       non linear vesting, more vesting at the start, less at the end
 **/
 
 struct VestingType {
     uint256 dailyRate;
     uint256 afterDays;
     bool vesting;
+    bool nonlinear;
 }
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
@@ -28,10 +32,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 contract VestingToken is Ownable, ERC20Burnable {
+    
+    using SafeMath for uint256;
+    
     mapping (address => VestingWallet) public vestingWallets;
     VestingType[] public vestingTypes;
-
-    using SafeMath for uint256;
+        
+    // Non linear unlocks per year per day, year 1 = index 0
+    uint256[] public nonLinearUnlockYears = [
+        58333333333333333, // 21%
+        41666666666666667, // 15%
+        33333333333333333, // 12%
+        27777777777777778, // 10%
+        25000000000000000, // 9%
+        22222222222222222, // 8%
+        19444444444444444, // 7%
+        18055555555555556, // 6.5%
+        16666666666666667, // 6%
+        15277777777777778  // 5.5%
+    ];
     
     /**
      * Setup the initial supply and types of vesting schema's
@@ -41,28 +60,28 @@ contract VestingToken is Ownable, ERC20Burnable {
         _setupDecimals(0);
 
 		// 0: 90 Days 0.277% per day (360 days), pre-seed
-        vestingTypes.push(VestingType(277777777777777778, 90 days, true));   
+        vestingTypes.push(VestingType(277777777777777778, 90 days, true, false));
 
         // 1: Immediate release for 360 days, seed, advisor
-        vestingTypes.push(VestingType(277777777777777778, 0, true));
+        vestingTypes.push(VestingType(277777777777777778, 0, true, false));
 
         // 2: Immediate release for 150 days, p1
-        vestingTypes.push(VestingType(666666666666666667, 0, true));
+        vestingTypes.push(VestingType(666666666666666667, 0, true, false));
 
         // 3: Immediate release for 120 days, p2
-        vestingTypes.push(VestingType(833333333333333333, 0, true));
+        vestingTypes.push(VestingType(833333333333333333, 0, true, false));
 
         // 4: IDO, release all first day
-        vestingTypes.push(VestingType(100000000000000000000, 0, true)); 
+        vestingTypes.push(VestingType(100000000000000000000, 0, true, false)); 
 
         // 5: Immediate release for 1080 days, reserve
-        vestingTypes.push(VestingType(92592592592592592, 0, true));
+        vestingTypes.push(VestingType(92592592592592592, 0, true, false));
 
         // 6: Release for 360 days, after 360 days, team
-        vestingTypes.push(VestingType(277777777777777778, 360 days, true));
+        vestingTypes.push(VestingType(277777777777777778, 360 days, true, false));
 
-        // 7: Release immediately, for 3600 days, rewards
-        vestingTypes.push(VestingType(27777777777777778, 0, true));
+        // 7: Release immediately, for 3600 days using nonlinear function, rewards
+        vestingTypes.push(VestingType(1337, 0, true, true));
     }
 	
     function getListingTime() public pure returns (uint256) {
@@ -92,8 +111,9 @@ contract VestingToken is Ownable, ERC20Burnable {
             // We add 1 to round up, this prevents small amounts from never vesting
             uint256 dayAmount = mulDiv(totalAmounts[i], vestingType.dailyRate, 100000000000000000000).add(1);
             uint256 afterDay = vestingType.afterDays;
+            bool nonlinear = vestingType.nonlinear;
 
-            addVestingWallet(_address, totalAmount, dayAmount, afterDay);
+            addVestingWallet(_address, totalAmount, dayAmount, afterDay, nonlinear);
         }
 
         return true;
@@ -107,16 +127,17 @@ contract VestingToken is Ownable, ERC20Burnable {
 
     // Utilizes the overwritten _mint function so won't mint past max supply
     // The provided amount is used for all transactions in this batch
-    function batchMint(address[] memory addresses, uint256 amount) external onlyOwner returns (bool) {
+    function batchMint(address[] memory addresses, uint256[] memory amounts) external onlyOwner returns (bool) {
+        require(addresses.length == amounts.length, "Addresses should equal amounts");
         uint256 addressesLength = addresses.length;
         for(uint256 i = 0; i < addressesLength; i++) {
             address _address = addresses[i];
-            _mint(_address, amount);
+            _mint(_address, amounts[i]);
         }
         return true;
     }
     
-    function addVestingWallet(address wallet, uint256 totalAmount, uint256 dayAmount, uint256 afterDays) internal {
+    function addVestingWallet(address wallet, uint256 totalAmount, uint256 dayAmount, uint256 afterDays, bool nonlinear) internal {
 
         require(!vestingWallets[wallet].vesting, "Vesting wallet already created for this address");
 
@@ -129,9 +150,10 @@ contract VestingToken is Ownable, ERC20Burnable {
             dayAmount,
             releaseTime.add(afterDays),
             afterDays,
-            true
+            true,
+            nonlinear
         );
-
+            
         vestingWallets[wallet] = vestingWallet;
         _mint(wallet, totalAmount);
     }
@@ -167,15 +189,42 @@ contract VestingToken is Ownable, ERC20Burnable {
 
         return true;
     }
+    
+    // Calculate the amount of unlocked tokens after X days for a given amount, nonlinear over 10 years
+    // 21.0%	15.0%	12.0%	10.0%	9.0%	8.0%	7.0%	6.5%	6.0%	5.5%
+    function calculateNonLinear(uint256 _days, uint256 amount) public view returns (uint256) {
+
+        uint256 _years = _days.div(360);
+    
+        if (_years > 9) {
+            return amount;
+        }
+
+        uint256 unlocked = 0;
+        uint256 _days_remainder = _days.mod(360);
+
+        for(uint256 i = 0; i < _years; i++) {
+            // Add 360x the amount unlocked per day counting for this year
+            unlocked = unlocked.add(mulDiv(amount, nonLinearUnlockYears[i], 100000000000000000000).add(1).mul(360));
+        }
+        
+        uint256 _rem = mulDiv(amount, nonLinearUnlockYears[_years], 100000000000000000000);
+        unlocked = unlocked.add(_rem.add(1).mul(_days_remainder));
+        return unlocked;
+    }
 
     function getTransferableAmount(address sender) public view returns (uint256) {
         
         if (!vestingWallets[sender].vesting) {
             return balanceOf(sender);
         }
-
-        uint256 ds = getDays(vestingWallets[sender].afterDays);
-        uint256 dailyTransferableAmount = vestingWallets[sender].dayAmount.mul(ds);
+        uint256 dailyTransferableAmount = 0;
+        uint256 _days = getDays(vestingWallets[sender].afterDays);
+        if (vestingWallets[sender].nonlinear == true) {
+            dailyTransferableAmount = calculateNonLinear(_days, vestingWallets[sender].totalAmount);
+        } else {
+            dailyTransferableAmount = vestingWallets[sender].dayAmount.mul(_days);
+        }
 
         if (dailyTransferableAmount > vestingWallets[sender].totalAmount) {
             return vestingWallets[sender].totalAmount;

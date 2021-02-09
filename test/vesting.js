@@ -99,7 +99,7 @@ describe("Vesting", function() {
             addr10.address
         ];
 
-        await mc.batchMint(addrs, 100);
+        await mc.batchMint(addrs, [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]);
 
         totalSupply = await mc.totalSupply();
         expect(totalSupply.toNumber()).to.equal(1000);
@@ -139,7 +139,7 @@ describe("Vesting", function() {
         expect(totalSupply.toNumber()).to.equal(0);
             
         // The amount of tokens te allocate for each vesting type
-        const total = 900;
+        const total = 10000000;
         
         await mc.addAllocations([addr1.address], [total], 0);
         await mc.addAllocations([addr2.address], [total], 1);
@@ -157,10 +157,13 @@ describe("Vesting", function() {
         const daily1080 = Math.floor(total/1080) + 1;
         const daily3600 = Math.floor(total/3600) + 1;
 
-
-        console.log('----------------------------------------------------------------------------------------------------')
-        console.log('Date           | Pre-Seed | Seed     | P1       | P2      | IDO      | Reserve  | Team     | Rewards')
-        console.log('----------------------------------------------------------------------------------------------------')
+        const nonlin_y1 = 5834;
+        const nonlin_y2 = 4167;
+        const nonlin_y3 = 3334;
+        const nonlin_y4 = 2778;
+        
+        console.log('\n\n------------- Vesting schedule CSV ------------------------\n\n');
+        console.log('Date, Day, Preseed, Seed, P1, P2, IDO, Reserve, Team, Rewards');
 
         // Set the next block TS to 2021/12/31 23:50:00 for testing,
         // Just before the contract starts
@@ -177,8 +180,7 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr9.address)).to.equal(0);
         expect(await mc.getTransferableAmount(addr10.address)).to.equal(0);
         
-        console.log('2021/12/31     | 0        | 0        | 0        | 0       | 0        | 0        | 0        | 0      ')
-        console.log('....................................................................................................')
+        console.log('2021/12/31, -1, 0, 0, 0, 0, 0, 0, 0, 0');
         
         // Set the next block TS to 2022/1/2 00:00:00 for testing
         await network.provider.send("evm_setNextBlockTimestamp", [1641031200]);
@@ -191,7 +193,9 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr5.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(0);
-        expect(await mc.getTransferableAmount(addr8.address)).to.equal(daily3600);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal(nonlin_y1);
+        
+        console.log('2022/01/01, 1, 0, '+daily360+', '+daily150+', '+daily120+', '+total+', '+daily1080+', 0, '+nonlin_y1);
 
         // Transfer too much, not allowed
         await expect(
@@ -218,7 +222,9 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr5.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080 * 2);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(0);
-        expect(await mc.getTransferableAmount(addr8.address)).to.equal(daily3600 * 2);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal(nonlin_y1 * 2);
+        
+        console.log('2022/01/02, 2, 0, '+daily360*2+', '+daily150*2+', '+daily120*2+', '+total+', '+daily1080*2+', 0, '+nonlin_y1*2);
         
         // Set the next block TS to 2022/4/1 00:00:01 for testing
         await network.provider.send("evm_setNextBlockTimestamp", [1648771201]);
@@ -231,7 +237,9 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr5.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080 * 91);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(0);
-        expect(await mc.getTransferableAmount(addr8.address)).to.equal(daily3600 * 91);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal(nonlin_y1 * 91);
+        
+        console.log('2022/04/01, 91, '+daily360+', '+daily360*91+', '+daily150*91+', '+daily120*91+', '+total+', '+daily1080*91+', 0, '+nonlin_y1*91);
         
         // Set the next block TS to 2022/6/30 00:00:01 for testing
         await network.provider.send("evm_setNextBlockTimestamp", [1656547201]);
@@ -244,10 +252,12 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr5.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080 * 181);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(0);
-        expect(await mc.getTransferableAmount(addr8.address)).to.equal(daily3600 * 181);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal(nonlin_y1 * 181);
+        
+        console.log('2022/06/30, 181, '+daily360*91+', '+daily360*181+', '+total+', '+total+', '+total+', '+daily1080*181+', 0, '+nonlin_y1*181);
         
         // Set the next block TS to 2022/12/27 00:00:01 for testing
-        await network.provider.send("evm_setNextBlockTimestamp", [1672099200]);
+        await network.provider.send("evm_setNextBlockTimestamp", [1672099201]);
         await network.provider.send("evm_mine");
         
         expect(await mc.getTransferableAmount(addr1.address)).to.equal(daily360 * 271);
@@ -257,7 +267,28 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr5.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080 * 361);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(daily360);
-        expect(await mc.getTransferableAmount(addr8.address)).to.equal(daily3600 * 361);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal((nonlin_y1 * 360) + nonlin_y2);
+        
+        console.log('2022/12/27, 361, '+daily360*271+', '+total+', '+total+', '+total+', '+total+', '+daily1080*361+', '+daily360+', '+((nonlin_y1*360)+nonlin_y2));
+        
+        // Set the next block TS to 2023/12/27 02:00:01 for testing
+        await network.provider.send("evm_setNextBlockTimestamp", [1703210401]);
+        await network.provider.send("evm_mine");
+        
+        expect(await mc.getTransferableAmount(addr6.address)).to.equal(daily1080 * 721);
+        expect(await mc.getTransferableAmount(addr7.address)).to.equal(total);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal((nonlin_y1 * 360) + (nonlin_y2*360) + nonlin_y3);
+        
+        console.log('2023/12/22, 721, '+total+', '+total+', '+total+', '+total+', '+total+', '+daily1080*721+', '+total+', '+((nonlin_y1*360)+(nonlin_y2*360)+(nonlin_y3)));
+        
+        // Set the next block TS to 2024/12/16 02:00:01 for testing
+        await network.provider.send("evm_setNextBlockTimestamp", [1734314401]);
+        await network.provider.send("evm_mine");
+        
+        expect(await mc.getTransferableAmount(addr6.address)).to.equal(total);
+        expect(await mc.getTransferableAmount(addr8.address)).to.equal((nonlin_y1 * 360) + (nonlin_y2*360) + (nonlin_y3*360) + nonlin_y4);
+        
+        console.log('2024/12/22, 1081, '+total+', '+total+', '+total+', '+total+', '+total+', '+total+', '+total+', '+((nonlin_y1*360)+(nonlin_y2*360)+(nonlin_y3*360)+nonlin_y4));
         
         // Set the next block TS to 2040/1/1 00:00:01 for testing
         await network.provider.send("evm_setNextBlockTimestamp", [2208988800]);
@@ -271,6 +302,10 @@ describe("Vesting", function() {
         expect(await mc.getTransferableAmount(addr6.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr7.address)).to.equal(total);
         expect(await mc.getTransferableAmount(addr8.address)).to.equal(total);
+        
+        console.log('2040/1/1, 6574, '+total+', '+total+', '+total+', '+total+', '+total+', '+total+', '+total+', '+total);
+        
+        console.log('\n\n-----------------------------------------------------------\n\n');
 
     });
     
