@@ -23,18 +23,22 @@ to `secrets.json` and modify the values so the commands will work as expected.
 
 ## Commonly used commands
 
-### Run the automated tests + calculate gas
+### Set up the tooling
+```bash
+npm install
 ```
+
+### Run the automated tests + calculate gas
+```bash
 npx hardhat test
 ```
 
-
 ### Deploy to the Rinkeby testnet
-```
+```bash
 npx hardhat run --network rinkeby scripts/deploy.js 
 ```
 
 ### Verify the smart contract on etherscan
-```
+```bash
 npx hardhat verify --network rinkeby CONTRACT_ADDRESS
 ```
