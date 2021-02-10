@@ -14,7 +14,7 @@ function randomAddress() {
     return '0x' + num.toString(16).padStart(40, '0')
 }
 
-describe("Vesting", function() {
+describe("GAS cost calculation", function() {
 
     let token;
     let mc;
