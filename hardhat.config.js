@@ -21,7 +21,8 @@ module.exports = {
   defaultNetwork: "hardhat",
   gasReporter: {
     coinmarketcap: cmc,
-    currency: 'EUR'
+    currency: 'EUR',
+    gasPrice: 100
   },
   etherscan: {
     apiKey: etherscan

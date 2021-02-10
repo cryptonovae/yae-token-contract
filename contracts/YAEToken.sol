@@ -208,12 +208,24 @@ contract YAEToken is Ownable, ERC20Burnable {
         if (!vestingWallets[sender].vesting) {
             return balanceOf(sender);
         }
+
+        if (!isStarted(0)) {
+            return 0;
+        }
+
         uint256 dailyTransferableAmount = 0;
         uint256 _days = getDays(vestingWallets[sender].afterDays);
+        uint256 trueDays = _days;
+
+        if (trueDays > 0) {
+            trueDays = _days + 29;
+        }
+
         if (vestingWallets[sender].nonlinear == true) {
-            dailyTransferableAmount = calculateNonLinear(_days, vestingWallets[sender].totalAmount);
+            dailyTransferableAmount = calculateNonLinear(trueDays, vestingWallets[sender].totalAmount);
         } else {
-            dailyTransferableAmount = vestingWallets[sender].dayAmount.mul(_days);
+            // We add 30 days so the start of the vesting is right away with 1 mo0nth worth of supply
+            dailyTransferableAmount = vestingWallets[sender].dayAmount.mul(trueDays);
         }
 
         if (dailyTransferableAmount > vestingWallets[sender].totalAmount) {
