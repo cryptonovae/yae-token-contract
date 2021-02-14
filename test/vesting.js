@@ -39,10 +39,10 @@ describe("Vesting", function() {
     it("Check if token settings are no placeholders", async function() {
         expect(await mc.name()).to.equal("Cryptonovae");
         expect(await mc.symbol()).to.equal("YAE");
-        expect(await mc.decimals()).to.equal(0);
+        expect(await mc.decimals()).to.equal(18);
         
         const maxSupply = await mc.getMaxTotalSupply();
-        expect(maxSupply.toNumber()).to.equal(100000000);
+        expect(maxSupply.toString()).to.equal('100000000000000000000000000');
     });
 
     it("Should set the right owner", async function () {
@@ -88,28 +88,28 @@ describe("Vesting", function() {
     
         expect(totalSupply.toNumber()).to.equal(0);
 
-        await mc.addAllocations([addr1.address], [1000000], 0);
-        await mc.addAllocations([addr2.address], [1000000], 1);
-        await mc.addAllocations([addr3.address], [1000000], 2);
-        await mc.addAllocations([addr4.address], [1000000], 3);
-        await mc.addAllocations([addr5.address], [1000000], 4);
-        await mc.addAllocations([addr6.address], [1000000], 5);
-        await mc.addAllocations([addr7.address], [1000000], 6);
-        await mc.addAllocations([addr8.address], [1000000], 7);
+        await mc.addAllocations([addr1.address], ['1000000000000000000000000'], 0);
+        await mc.addAllocations([addr2.address], ['1000000000000000000000000'], 1);
+        await mc.addAllocations([addr3.address], ['1000000000000000000000000'], 2);
+        await mc.addAllocations([addr4.address], ['1000000000000000000000000'], 3);
+        await mc.addAllocations([addr5.address], ['1000000000000000000000000'], 4);
+        await mc.addAllocations([addr6.address], ['1000000000000000000000000'], 5);
+        await mc.addAllocations([addr7.address], ['1000000000000000000000000'], 6);
+        await mc.addAllocations([addr8.address], ['1000000000000000000000000'], 7);
         
         await expect(
-            mc.addAllocations([addr8.address], [1000000], 3)
+            mc.addAllocations([addr8.address], ['1000000000000000000000000'], 3)
         ).to.be.revertedWith("Vesting wallet already created for this address");
         
-        await mc.addAllocations([addr9.address], [92000000], 7);
+        await mc.addAllocations([addr9.address], ['92000000000000000000000000'], 7);
 
         await expect(
-            mc.addAllocations([addr10.address], [1000000], 7)
+            mc.addAllocations([addr10.address], ['1000000000000000000000000'], 7)
         ).to.be.revertedWith("Maximum supply exceeded!");
         
 
         totalSupply = await mc.totalSupply();
-        expect(totalSupply.toNumber()).to.equal(100000000);
+        expect(totalSupply.toString()).to.equal('100000000000000000000000000');
     });
     it("Check vesting at certain dates", async function() {
         let totalSupply = await mc.totalSupply();

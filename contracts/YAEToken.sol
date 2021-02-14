@@ -57,7 +57,6 @@ contract YAEToken is Ownable, ERC20Burnable {
     **/
     
     constructor() ERC20("Cryptonovae", "YAE") {
-        _setupDecimals(0);
 
 		// 0: 90 Days 0.277% per day (360 days), pre-seed
         vestingTypes.push(VestingType(277777777777777778, 90 days, true, false));
@@ -86,13 +85,13 @@ contract YAEToken is Ownable, ERC20Burnable {
 	
     // Vested tokens won't be available before the listing time
     function getListingTime() public pure returns (uint256) {
-        return 1640995200; // 2022/1/1 00:00
-        //return 1609459200; // 2021/1/1 00:00
+        //return 1640995200; // 2022/1/1 00:00
+        return 1609459200; // 2021/1/1 00:00
         //return 1614607200; // March 1st 2021 @ 2:00pm (UTC)
     }
 
     function getMaxTotalSupply() public pure returns (uint256) {
-        return 100000000;
+        return 100000000000000000000000000;
     }
 
     function mulDiv(uint256 x, uint256 y, uint256 z) private pure returns (uint256) {
