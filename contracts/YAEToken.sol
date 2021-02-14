@@ -85,8 +85,8 @@ contract YAEToken is Ownable, ERC20Burnable {
 	
     // Vested tokens won't be available before the listing time
     function getListingTime() public pure returns (uint256) {
-        //return 1640995200; // 2022/1/1 00:00
-        return 1609459200; // 2021/1/1 00:00
+        return 1640995200; // 2022/1/1 00:00
+        //return 1609459200; // 2021/1/1 00:00
         //return 1614607200; // March 1st 2021 @ 2:00pm (UTC)
     }
 
