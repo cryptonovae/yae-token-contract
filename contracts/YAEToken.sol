@@ -7,7 +7,6 @@ struct VestingWallet {
     uint256 dayAmount;
     uint256 startDay;
     uint256 afterDays;
-    bool vesting;
     bool nonlinear;
 }
 
@@ -22,7 +21,6 @@ struct VestingWallet {
 struct VestingType {
     uint256 dailyRate;
     uint256 afterDays;
-    bool vesting;
     bool nonlinear;
 }
 
@@ -37,6 +35,9 @@ contract YAEToken is Ownable, ERC20Burnable {
     
     mapping (address => VestingWallet) public vestingWallets;
     VestingType[] public vestingTypes;
+
+    uint256 public constant PRECISION = 1e18;
+    uint256 public constant ONE_HUNDRED_PERCENT = PRECISION * 100;
         
     // Non linear unlocks per year per day, year 1 = index 0
     uint256[] public nonLinearUnlockYears = [
@@ -59,28 +60,28 @@ contract YAEToken is Ownable, ERC20Burnable {
     constructor() ERC20("Cryptonovae", "YAE") {
 
 		// 0: 90 Days 0.277% per day (360 days), pre-seed
-        vestingTypes.push(VestingType(277777777777777778, 90 days, true, false));
+        vestingTypes.push(VestingType(277777777777777778, 90 days, false));
 
         // 1: Immediate release for 360 days, seed, advisor
-        vestingTypes.push(VestingType(277777777777777778, 0, true, false));
+        vestingTypes.push(VestingType(277777777777777778, 0, false));
 
         // 2: Immediate release for 150 days, p1
-        vestingTypes.push(VestingType(666666666666666667, 0, true, false));
+        vestingTypes.push(VestingType(666666666666666667, 0, false));
 
         // 3: Immediate release for 120 days, p2
-        vestingTypes.push(VestingType(833333333333333333, 0, true, false));
+        vestingTypes.push(VestingType(833333333333333333, 0, false));
 
         // 4: IDO, release all first day
-        vestingTypes.push(VestingType(100000000000000000000, 0, true, false)); 
+        vestingTypes.push(VestingType(100000000000000000000, 0, false)); 
 
         // 5: Immediate release for 1080 days, reserve
-        vestingTypes.push(VestingType(92592592592592592, 0, true, false));
+        vestingTypes.push(VestingType(92592592592592592, 0, false));
 
         // 6: Release for 360 days, after 360 days, team
-        vestingTypes.push(VestingType(277777777777777778, 360 days, true, false));
+        vestingTypes.push(VestingType(277777777777777778, 360 days, false));
 
         // 7: Release immediately, for 3600 days using nonlinear function, rewards
-        vestingTypes.push(VestingType(1337, 0, true, true));
+        vestingTypes.push(VestingType(1337, 0, true));
     }
 	
     // Vested tokens won't be available before the listing time
@@ -91,7 +92,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     }
 
     function getMaxTotalSupply() public pure returns (uint256) {
-        return 100000000000000000000000000;
+        return PRECISION * 1e8; // 100 million tokens with 18 decimals
     }
 
     function mulDiv(uint256 x, uint256 y, uint256 z) private pure returns (uint256) {
@@ -100,7 +101,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     
     function addAllocations(address[] memory addresses, uint256[] memory totalAmounts, uint256 vestingTypeIndex) external onlyOwner returns (bool) {
         require(addresses.length == totalAmounts.length, "Address and totalAmounts length must be same");
-        require(vestingTypes[vestingTypeIndex].vesting, "Vesting type isn't found");
+        require(vestingTypeIndex < vestingTypes.length, "Vesting type isn't found");
 
         VestingType memory vestingType = vestingTypes[vestingTypeIndex];
         uint256 addressesLength = addresses.length;
@@ -109,7 +110,7 @@ contract YAEToken is Ownable, ERC20Burnable {
             address _address = addresses[i];
             uint256 totalAmount = totalAmounts[i];
             // We add 1 to round up, this prevents small amounts from never vesting
-            uint256 dayAmount = mulDiv(totalAmounts[i], vestingType.dailyRate, 100000000000000000000).add(1);
+            uint256 dayAmount = mulDiv(totalAmounts[i], vestingType.dailyRate, ONE_HUNDRED_PERCENT);
             uint256 afterDay = vestingType.afterDays;
             bool nonlinear = vestingType.nonlinear;
 
@@ -127,7 +128,7 @@ contract YAEToken is Ownable, ERC20Burnable {
 
     function addVestingWallet(address wallet, uint256 totalAmount, uint256 dayAmount, uint256 afterDays, bool nonlinear) internal {
 
-        require(!vestingWallets[wallet].vesting, "Vesting wallet already created for this address");
+        require(vestingWallets[wallet].totalAmount == 0, "Vesting wallet already created for this address");
 
         uint256 releaseTime = getListingTime();
 
@@ -138,7 +139,6 @@ contract YAEToken is Ownable, ERC20Burnable {
             dayAmount,
             releaseTime.add(afterDays),
             afterDays,
-            true,
             nonlinear
         );
             
@@ -193,19 +193,24 @@ contract YAEToken is Ownable, ERC20Burnable {
 
         for(uint256 i = 0; i < _years; i++) {
             // Add 360x the amount unlocked per day counting for this year
-            unlocked = unlocked.add(mulDiv(amount, nonLinearUnlockYears[i], 100000000000000000000).add(1).mul(360));
+            unlocked = unlocked.add(mulDiv(amount, nonLinearUnlockYears[i], ONE_HUNDRED_PERCENT).mul(360));
         }
         
-        uint256 _rem = mulDiv(amount, nonLinearUnlockYears[_years], 100000000000000000000);
-        unlocked = unlocked.add(_rem.add(1).mul(_days_remainder));
+        uint256 _rem = mulDiv(amount, nonLinearUnlockYears[_years], ONE_HUNDRED_PERCENT);
+        unlocked = unlocked.add(_rem.mul(_days_remainder));
+
+		if (unlocked > amount){
+			unlocked = amount;
+		} 
+
         return unlocked;
     }
     
     // Returns the amount of tokens unlocked by vesting so far
-    function getTransferableAmount(address sender) public view returns (uint256) {
+    function getUnlockedVestingAmount(address sender) public view returns (uint256) {
         
-        if (!vestingWallets[sender].vesting) {
-            return balanceOf(sender);
+        if (vestingWallets[sender].totalAmount == 0) {
+			return 0;
         }
 
         if (!isStarted(0)) {
@@ -213,8 +218,7 @@ contract YAEToken is Ownable, ERC20Burnable {
         }
 
         uint256 dailyTransferableAmount = 0;
-        uint256 _days = getDays(vestingWallets[sender].afterDays);
-        uint256 trueDays = _days;
+        uint256 trueDays = getDays(vestingWallets[sender].afterDays);
         
         // Unlock the first month right away on the first day of vesting;
         // But only start the real vesting after the first month (0, 30, 30, .., 31)
@@ -237,7 +241,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     
     // Returns the amount of vesting tokens still locked
     function getRestAmount(address sender) public view returns (uint256) {
-        uint256 transferableAmount = getTransferableAmount(sender);
+        uint256 transferableAmount = getUnlockedVestingAmount(sender);
         uint256 restAmount = vestingWallets[sender].totalAmount.sub(transferableAmount);
 
         return restAmount;
@@ -247,7 +251,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     function canTransfer(address sender, uint256 amount) public view returns (bool) {
 
         // Treat as a normal coin if this is not a vested wallet
-        if (!vestingWallets[sender].vesting) {
+        if (vestingWallets[sender].totalAmount == 0) {
             return true;
         }
 
