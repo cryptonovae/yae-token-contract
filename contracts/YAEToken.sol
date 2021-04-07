@@ -14,7 +14,7 @@ struct VestingWallet {
  * dailyRate:       the daily amount of tokens to give access to,
  *                  this is a percentage * 1000000000000000000
  *                  this value is ignored if nonlinear is true
- * afterDays:       vesting cliff, don't allow any withdrawal before these days expired
+ * afterDays:       vesting cliff, dont allow any withdrawal before these days expired
  * nonlinear:       non linear vesting, more vesting at the start, less at the end
 **/
 
@@ -54,7 +54,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     ];
     
     /**
-     * Setup the initial supply and types of vesting schema's
+     * Setup the initial supply and types of vesting schemas
     **/
     
     constructor() ERC20("Cryptonovae", "YAE") {
@@ -82,13 +82,14 @@ contract YAEToken is Ownable, ERC20Burnable {
 
         // 7: Release immediately, for 3600 days using nonlinear function, rewards
         vestingTypes.push(VestingType(1337, 0, true));
+        
+        // Release before token start, tokens for liquidity
+        _mint(address(0x285F56c5Fdb0FF311db0Fb6ab95BF5f0D7C31D85), 2000000e18);
     }
 	
-    // Vested tokens won't be available before the listing time
+    // Vested tokens wont be available before the listing time
     function getListingTime() public pure returns (uint256) {
-        return 1640995200; // 2022/1/1 00:00
-        //return 1609459200; // 2021/1/1 00:00
-        //return 1614607200; // March 1st 2021 @ 2:00pm (UTC)
+        return 1617984000; // 2021/4/9 16:00 UTC
     }
 
     function getMaxTotalSupply() public pure returns (uint256) {
@@ -101,7 +102,7 @@ contract YAEToken is Ownable, ERC20Burnable {
     
     function addAllocations(address[] memory addresses, uint256[] memory totalAmounts, uint256 vestingTypeIndex) external onlyOwner returns (bool) {
         require(addresses.length == totalAmounts.length, "Address and totalAmounts length must be same");
-        require(vestingTypeIndex < vestingTypes.length, "Vesting type isn't found");
+        require(vestingTypeIndex < vestingTypes.length, "Vesting type isnt found");
 
         VestingType memory vestingType = vestingTypes[vestingTypeIndex];
         uint256 addressesLength = addresses.length;

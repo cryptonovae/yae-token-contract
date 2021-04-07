@@ -6,7 +6,8 @@ require('@openzeppelin/hardhat-upgrades');
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
 
-const { cmc, projectId, privkey, etherscan } = require('./secrets.json');
+const { utils } = require("ethers");
+const { cmc, projectId, privkey, privprod, etherscan } = require('./secrets.json');
 
 module.exports = {
   solidity: {
@@ -18,7 +19,7 @@ module.exports = {
       }
     }
   },
-  defaultNetwork: "hardhat",
+  defaultNetwork: "rinkeby",
   gasReporter: {
     coinmarketcap: cmc,
     currency: 'EUR',
@@ -33,6 +34,11 @@ module.exports = {
     rinkeby: {
         url: `https://rinkeby.infura.io/v3/${projectId}`,
         accounts: [privkey]
+    },
+    mainnet: {
+        url: `https://mainnet.infura.io/v3/${projectId}`,
+        accounts: [privprod],
+        gasPrice: parseInt(utils.parseUnits("100", "gwei"))
     }
   }
 };
